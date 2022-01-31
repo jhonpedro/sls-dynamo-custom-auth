@@ -1,0 +1,83 @@
+service: sls-custom-authorizer
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+frameworkVersion: '3'
+useDotenv: true
+
+provider:
+  name: aws
+  region: us-east-2
+  runtime: nodejs14.x
+  environment:
+    USER_TABLE_NAME: ${env:USER_TABLE_NAME}
+    APP_SECRET: ${env:APP_SECRET}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource: '*'
+
+custom:
+  fDir: src/functions/
+  allowAdminAuthDir: src/functions/authorizers/allowAdmin.handler
+  serverless-offline:
+    httpPort: 8080
+    lambdaPort: 8081
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      migrate: true
+
+# Add the serverless-webpack plugin
+plugins:
+  - serverless-webpack
+  - serverless-dynamodb-local
+  - serverless-offline
+
+functions:
+  createUser:
+    handler: ${self:custom.fDir}user/create.handler
+    events:
+      - http:
+          method: post
+          path: /create-user
+          cors: true
+  createSession:
+    handler: ${self:custom.fDir}session/create.handler
+    events:
+      - http:
+          method: post
+          path: /session
+          cors: true
+  findAllUsers:
+    handler: ${self:custom.fDir}user/findAll.handler
+    events:
+      - http:
+          method: get
+          path: /find-all-users
+          cors: true
+          authorizer: allowAdminAuthorizerFunc
+  allowAdminAuthorizerFunc:
+    handler: ${self:custom.allowAdminAuthDir}
+
+resources:
+  Resources:
+    users:
+      # https://docs.aws.amazon.com/pt_br/AWSCloudFormation/latest/UserGuide/aws-resource-dynamodb-table.html
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USER_TABLE_NAME}
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

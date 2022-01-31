@@ -1,0 +1,11 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@util/*": ["src/util/*"],
+			"@authorizer/*": ["src/authorizer/*"],
+			"@functions/*": ["src/functions/*"],
+			"@database/*": ["src/database/*"]
+		}
+	}
+}
